@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WordReview">
+  <meta name="theme-color" content="#0b0f19">
+  <title>English Review — Карточки слов</title>
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+
+  <script src="./vendor/supabase.js"></script>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">ER</div>
+      <div class="brand-title">English Review</div>
+    </div>
+    <div class="header-badges">
+      <div id="syncBadge" class="sync-badge" title="Статус синхронизации">
+        <span class="sync-dot"></span>
+        <span id="syncStatusText">Локально</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="tabStudy">🗂 Повторение</button>
+    <button class="tab-btn" data-tab="tabList">📖 Словарь</button>
+    <button class="tab-btn" data-tab="tabAdd">➕ Добавить</button>
+    <button class="tab-btn" data-tab="tabSettings">⚙️ Настройки</button>
+  </nav>
+
+  <main class="container">
+
+    <section id="tabStudy" class="tab-content active">
+
+      <div class="daily-goal-card">
+        <div class="daily-goal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>🎯 Цель на сегодня:</span>
+            <span id="dailyGoalCount" style="color: var(--text-primary); font-weight: 700;">0 / 50</span>
+          </div>
+          <div class="streak-badge" id="streakBadge" title="Дней подряд">
+            🔥 <span id="streakDaysCount">1</span> дн. стрик
+          </div>
+        </div>
+        <div class="daily-goal-bar">
+          <div class="daily-goal-fill" id="dailyGoalFill"></div>
+        </div>
+      </div>
+
+      <div class="stats-banner">
+        <div class="stat-item">
+          <span id="statDue" class="stat-num due">0</span>
+          <span class="stat-label">К повтору</span>
+        </div>
+        <div class="stat-item">
+          <span id="statPriority" class="stat-num priority">0</span>
+          <span class="stat-label">Приоритет</span>
+        </div>
+        <div class="stat-item">
+          <span id="statLearning" class="stat-num">0</span>
+          <span class="stat-label">В процессе</span>
+        </div>
+        <div class="stat-item">
+          <span id="statTotal" class="stat-num">0</span>
+          <span class="stat-label">Всего</span>
+        </div>
+      </div>
+
+      <div id="cardWrapper">
+        <div id="flashcard" class="flashcard">
+          <span id="cardBadge" class="card-badge badge-due">На повторение</span>
+          <div class="card-term-wrapper">
+            <div id="cardTerm" class="card-term">previously</div>
+            <button id="btnQuickSpeak" class="card-term-speak" title="Озвучить (S)">🔊</button>
+          </div>
+          <div id="cardTranscription" class="card-transcription">[ˈpriːvjəslɪ]</div>
+          <div id="cardRus" class="card-rus hidden">ранее, предварительно</div>
+          <div class="card-hint">Нажмите на карточку, чтобы открыть перевод</div>
+        </div>
+
+        <div class="card-actions-row">
+          <button id="btnToggleTrans" class="btn btn-primary" title="Пробел">
+            👁 Показать перевод
+          </button>
+          <button id="btnSpeak" class="btn btn-secondary" title="Клавиша S">
+            🔊 Озвучить
+          </button>
+          <button id="btnPrev" class="btn btn-secondary" title="Клавиша Z">
+            ⬅️ Назад
+          </button>
+          <button id="btnSkip" class="btn btn-secondary" title="Клавиша N">
+            ⏭ Пропустить
+          </button>
+          <button id="btnRepeat" class="btn btn-repeat" title="Клавиша R">
+            ⚡ Повторить (3–10 карточек)
+          </button>
+        </div>
+
+        <div class="intervals-container">
+          <div class="intervals-title">Запланировать следующее повторение</div>
+          <div class="intervals-grid grid-row-1" id="intervalsRow1">
+
+          </div>
+          <div class="intervals-grid grid-row-2" id="intervalsRow2">
+
+          </div>
+        </div>
+      </div>
+
+      <div id="emptyStudyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">🎉</div>
+        <h2 class="empty-title">Всё повторено на сейчас!</h2>
+        <p class="empty-desc">На данный момент нет слов, требующих повторения. Вы можете отдохнуть или добавить новые слова в словарь.</p>
+        <button id="btnAddFirstWord" class="btn btn-primary">➕ Добавить новое слово</button>
+      </div>
+    </section>
+
+    <section id="tabList" class="tab-content">
+      <div class="list-controls">
+        <input type="text" id="searchInput" class="search-input" placeholder="Поиск по слову или переводу...">
+        <select id="filterSelect" class="filter-select">
+          <option value="all">Все слова</option>
+          <option value="due">Готовы к повторению</option>
+          <option value="priority">Приоритетные</option>
+          <option value="learning">В процессе</option>
+          <option value="new">Новые</option>
+        </select>
+      </div>
+
+      <div class="words-table-wrapper">
+        <div id="wordsListContainer" class="words-list">
+
+        </div>
+      </div>
+    </section>
+
+    <section id="tabAdd" class="tab-content">
+      <div class="form-card">
+        <h2 style="margin-bottom: 20px; font-size: 1.3rem;">Добавление нового слова / фразы</h2>
+        <form id="addWordForm">
+          <div class="form-group">
+            <label class="form-label" for="addWord">Слово или фраза на английском *</label>
+            <input type="text" id="addWord" class="form-input" placeholder="e.g. breakthrough" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="addTranscription">Транскрипция (необязательно)</label>
+            <input type="text" id="addTranscription" class="form-input" placeholder="e.g. [ˈbreɪkθruː]" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="addRus">Перевод на русский *</label>
+            <input type="text" id="addRus" class="form-input" placeholder="e.g. прорыв, достижение" required autocomplete="off">
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;">➕ Сохранить слово</button>
+            <button type="button" id="btnTestSpeakNew" class="btn btn-secondary">🔊 Прослушать</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="tabSettings" class="tab-content">
+
+      <div class="form-card" style="margin-bottom: 20px;">
+        <h2 style="margin-bottom: 12px; font-size: 1.25rem;">☁️ Синхронизация (Supabase)</h2>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4;">
+          Войдите в свой аккаунт, чтобы синхронизировать слова и прогресс между устройствами.
+        </p>
+        <div class="form-group">
+          <label class="form-label" for="sbUrl">Project URL</label>
+          <input type="url" id="sbUrl" class="form-input" placeholder="https://your-project.supabase.co">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sbKey">Publishable key</label>
+          <input type="password" id="sbKey" class="form-input" placeholder="sb_publishable_…">
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button id="btnSaveSb" class="btn btn-primary">💾 Сохранить и подключиться</button>
+          <button id="btnDisconnectSb" class="btn btn-secondary">Отключить</button>
+        </div>
+        <hr style="margin: 22px 0; border-color: var(--border-color);">
+        <h3 style="margin-bottom: 12px; font-size: 1.05rem;">Аккаунт</h3>
+        <div class="form-group">
+          <label class="form-label" for="sbEmail">Email</label>
+          <input type="email" id="sbEmail" class="form-input" autocomplete="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sbPassword">Пароль аккаунта</label>
+          <input type="password" id="sbPassword" class="form-input" autocomplete="current-password" placeholder="Пароль аккаунта">
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button id="btnSignInSb" class="btn btn-primary">Войти</button>
+          <button id="btnSignUpSb" class="btn btn-secondary">Создать аккаунт</button>
+          <button id="btnSignOutSb" class="btn btn-secondary">Выйти</button>
+        </div>
+        <p id="sbAuthStatus" style="margin-top: 12px; font-size: 0.9rem; color: var(--text-secondary);">Вход не выполнен</p>
+      </div>
+
+      <div class="form-card" style="margin-bottom: 20px;">
+        <h2 style="margin-bottom: 12px; font-size: 1.25rem;">🔊 Настройки озвучки</h2>
+        <div class="form-group">
+          <label class="form-label" for="voiceSelect">Голос (English)</label>
+          <select id="voiceSelect" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="voiceRate">Скорость речи: <span id="rateVal">0.95x</span></label>
+          <input type="range" id="voiceRate" min="0.6" max="1.4" step="0.05" value="0.95" style="width: 100%;">
+        </div>
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="autoPlaySpeech" style="width: 18px; height: 18px; cursor: pointer;">
+          <label for="autoPlaySpeech" style="font-size: 0.95rem; cursor: pointer;">Автоматически озвучивать при открытии карточки</label>
+        </div>
+        <button id="btnTestVoice" class="btn btn-secondary">🔊 Тест звука</button>
+      </div>
+
+      <div class="form-card" style="margin-bottom: 20px;">
+        <h2 style="margin-bottom: 12px; font-size: 1.25rem;">📦 Резервная копия (JSON)</h2>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+          Сохраните резервную копию или выберите JSON со словами и фразами. Импорт добавляет новые записи и сохраняет прогресс уже добавленных.
+        </p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button id="btnExportJson" class="btn btn-secondary">📥 Скачать бэкап (JSON)</button>
+          <label class="btn btn-secondary" style="cursor: pointer;">
+            📤 Загрузить из JSON
+            <input type="file" id="importFileInput" accept=".json" multiple style="display: none;">
+          </label>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <div id="editModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Редактирование слова</h3>
+        <button id="btnCloseModal" class="icon-btn" style="font-size: 1.4rem;">&times;</button>
+      </div>
+      <form id="editWordForm">
+        <input type="hidden" id="editWordId">
+        <div class="form-group">
+          <label class="form-label" for="editWord">Слово / фраза</label>
+          <input type="text" id="editWord" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editTranscription">Транскрипция</label>
+          <input type="text" id="editTranscription" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editRus">Перевод</label>
+          <input type="text" id="editRus" class="form-input" required>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" id="btnCancelEdit" class="btn btn-secondary">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script type="module" src="./js/app.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+      }
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => console.log('SW registration error:', err));
+      });
+    }
+  </script>
+</body>
+</html>
