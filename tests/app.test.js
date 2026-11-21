@@ -41,6 +41,58 @@ test('add, schedule, edit, and delete preserve card and dictionary behavior', as
   assert.equal(app.currentIdx, null);
 });
 
+test('the last card stays available on repeat and only timed postponement counts toward 100', async () => {
+  const dailyKey = storage.localKey('daily');
+  const savedDaily = localStorage.getItem(dailyKey);
+  localStorage.setItem(dailyKey, JSON.stringify({ ...app.dailyData, goal: 50, todayCount: 2 }));
+  app.initDailyGoal();
+  assert.equal(app.dailyGoalCount.textContent, '2 / 100 (2%)');
+
+  app.addWordInput.value = 'pear';
+  app.addRusInput.value = 'груша';
+  await app.handleAddWord({ preventDefault() {} });
+  assert.equal(app.statDue.textContent, '1');
+  app.filterSelect.value = 'due';
+  app.renderWordsList();
+  assert.equal(document.querySelectorAll('.word-row').length, 1);
+  app.skipNext();
+  assert.equal(app.dailyData.todayCount, 2);
+  app.showCurrentWithoutMutation(true);
+
+  app.repeatSoon();
+  assert.equal(app.cardWrapper.style.display, 'block');
+  assert.equal(app.cardTerm.textContent, 'pear');
+  assert.equal(app.dailyData.todayCount, 2);
+  await tick();
+  app.items = await storage.loadWords();
+  assert.equal(app.items[0].is_priority, true);
+  assert.ok(app.items[0].priority_countdown >= 3);
+  app.showCurrentWithoutMutation(true);
+  assert.equal(app.cardWrapper.style.display, 'block');
+  assert.equal(app.cardTerm.textContent, 'pear');
+
+  const button = Array.from(app.intervalsRow2.children).find((element) => element.textContent.includes('20 days'));
+  assert.ok(button);
+  const beforeClick = Date.now();
+  button.click();
+  await tick();
+  const [card] = await storage.loadWords();
+  const nextRepeat = Date.parse(card.next_repeat);
+  const delay = 20 * 24 * 60 * 60 * 1000;
+  assert.ok(nextRepeat >= beforeClick + delay && nextRepeat <= Date.now() + delay);
+  assert.equal(card.is_priority, false);
+  assert.equal(app.currentIdx, null);
+  assert.equal(app.statDue.textContent, '0');
+  app.renderWordsList();
+  assert.equal(document.querySelectorAll('.word-row').length, 0);
+  assert.equal(app.dailyGoalCount.textContent, '3 / 100 (3%)');
+
+  app.filterSelect.value = 'all';
+  await app.handleDeleteWord(card.id);
+  localStorage.setItem(dailyKey, savedDaily);
+  app.initDailyGoal();
+});
+
 test('multiple JSON files import together and imported HTML is rendered as text', async () => {
   const files = [
     { text: async () => JSON.stringify([{ id: 1, word: '<img src=x onerror=alert(1)>', rus: '<script>bad()</script>' }]) },

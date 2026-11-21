@@ -131,7 +131,7 @@ test('getStats: точный подсчет статистики', () => {
   const stats = getStats(items);
   assertEquals(stats.total, 4, 'Всего слов');
   assertEquals(stats.newWords, 1, 'Новые слова');
-  assertEquals(stats.due, 1, 'К повторению');
+  assertEquals(stats.due, 3, 'К повторению: новые, просроченные и приоритетные без даты');
   assertEquals(stats.learning, 1, 'В процессе');
   assertEquals(stats.priority, 1, 'Приоритетные');
 });

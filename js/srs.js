@@ -79,27 +79,27 @@ export function getRandomPriorityCountdown(min = 3, max = 10) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+export function isDueForReview(item, now) {
+  return !item.next_repeat || Date.parse(item.next_repeat) <= now;
+}
+
 export function getStats(items) {
-  const now = new Date();
+  const now = Date.now();
   let due = 0;
   let newWords = 0;
   let learning = 0;
   let priority = 0;
 
   for (const it of items) {
+    const isDue = isDueForReview(it, now);
+    if (isDue) due++;
+
     if (it.is_priority) {
       priority++;
-      continue;
-    }
-    if (!it.next_repeat) {
+    } else if (!it.next_repeat) {
       newWords++;
-    } else {
-      const dt = new Date(it.next_repeat);
-      if (dt <= now) {
-        due++;
-      } else {
-        learning++;
-      }
+    } else if (!isDue) {
+      learning++;
     }
   }
 

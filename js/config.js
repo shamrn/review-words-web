@@ -7,9 +7,10 @@ export const INTERVALS_ROW1 = [
 ];
 
 export const INTERVALS_ROW2 = [
-  { label: '1 month', ms: 30 * 24 * 60 * 60 * 1000 },
-  { label: '3 month', ms: 90 * 24 * 60 * 60 * 1000 },
-  { label: '6 month', ms: 180 * 24 * 60 * 60 * 1000 },
+  { label: '20 days', key: '9', ms: 20 * 24 * 60 * 60 * 1000 },
+  { label: '1 month', key: '6', ms: 30 * 24 * 60 * 60 * 1000 },
+  { label: '3 month', key: '7', ms: 90 * 24 * 60 * 60 * 1000 },
+  { label: '6 month', key: '8', ms: 180 * 24 * 60 * 60 * 1000 },
 ];
 
 export const STORAGE_KEYS = {
@@ -21,4 +22,4 @@ export const STORAGE_KEYS = {
   DAILY: 'review_words_daily_goal',
 };
 
-export const DEFAULT_DAILY_GOAL = 50;
+export const DEFAULT_DAILY_GOAL = 100;

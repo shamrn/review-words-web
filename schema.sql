@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.words (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
     word TEXT NOT NULL,
     transcription TEXT NOT NULL DEFAULT '',
-    rusа TEXT NOT NULL,
+    rus TEXT NOT NULL,
     next_repeat TIMESTAMPTZ,
     is_priority BOOLEAN NOT NULL DEFAULT FALSE,
     priority_countdown INTEGER NOT NULL DEFAULT 0,

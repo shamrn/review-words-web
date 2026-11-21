@@ -6,6 +6,7 @@ import {
   tickPriorityCountdowns,
   getRandomPriorityCountdown,
   getStats,
+  isDueForReview,
 } from './srs.js';
 import { storage } from './storage.js';
 import { tts } from './tts.js';
@@ -40,7 +41,6 @@ export class App {
 
     this.statDue = document.getElementById('statDue');
     this.statPriority = document.getElementById('statPriority');
-    this.statLearning = document.getElementById('statLearning');
     this.statTotal = document.getElementById('statTotal');
 
     this.cardWrapper = document.getElementById('cardWrapper');
@@ -140,7 +140,7 @@ export class App {
       try {
         const parsed = JSON.parse(raw);
         if (parsed.lastDate === todayStr) {
-          data = { ...data, ...parsed };
+          data = { ...data, ...parsed, goal: DEFAULT_DAILY_GOAL };
         } else {
 
           const last = new Date(parsed.lastDate);
@@ -156,7 +156,6 @@ export class App {
           }
           data.lastDate = todayStr;
           data.todayCount = 0;
-          data.goal = parsed.goal || DEFAULT_DAILY_GOAL;
         }
       } catch (_) {}
     }
@@ -210,10 +209,10 @@ export class App {
     });
 
     this.intervalsRow2.innerHTML = '';
-    INTERVALS_ROW2.forEach((item, idx) => {
+    INTERVALS_ROW2.forEach((item) => {
       const btn = document.createElement('button');
       btn.className = 'btn-interval';
-      btn.innerHTML = `${item.label} <span style="opacity:0.5;font-size:0.75rem;">(${idx + 6})</span>`;
+      btn.innerHTML = `${item.label} <span style="opacity:0.5;font-size:0.75rem;">(${item.key})</span>`;
       btn.addEventListener('click', () => this.schedule(item.ms));
       this.intervalsRow2.appendChild(btn);
     });
@@ -342,9 +341,9 @@ export class App {
       } else if (e.key >= '1' && e.key <= '5') {
         const idx = parseInt(e.key, 10) - 1;
         if (INTERVALS_ROW1[idx]) this.schedule(INTERVALS_ROW1[idx].ms);
-      } else if (e.key >= '6' && e.key <= '8') {
-        const idx = parseInt(e.key, 10) - 6;
-        if (INTERVALS_ROW2[idx]) this.schedule(INTERVALS_ROW2[idx].ms);
+      } else {
+        const interval = INTERVALS_ROW2.find((item) => item.key === e.key);
+        if (interval) this.schedule(interval.ms);
       }
     });
 
@@ -417,7 +416,7 @@ export class App {
   }
 
   setCard(idx, pushHistory = true) {
-    if (pushHistory && this.currentIdx !== null) {
+    if (pushHistory && this.currentIdx !== null && idx !== this.currentIdx) {
       this.history.push(this.currentIdx);
     }
 
@@ -437,8 +436,7 @@ export class App {
 
     if (item.is_priority) {
       this.cardBadge.className = 'card-badge badge-priority';
-      const c = item.priority_countdown || 0;
-      this.cardBadge.textContent = `Приоритет (${c > 0 ? c + ' карточек' : 'сейчас'})`;
+      this.cardBadge.textContent = 'Приоритет (сейчас)';
     } else if (item.next_repeat) {
       this.cardBadge.className = 'card-badge badge-due';
       this.cardBadge.textContent = 'На повторение';
@@ -477,6 +475,14 @@ export class App {
       return;
     }
 
+    const pendingPriIdx = this.items.findIndex((it) => it.is_priority);
+    if (pendingPriIdx !== -1) {
+      this.currentKind = 'priority';
+      this.currentDueNextCursor = null;
+      this.setCard(pendingPriIdx, !first);
+      return;
+    }
+
     this.showEmptyState();
   }
 
@@ -501,11 +507,14 @@ export class App {
       return;
     }
 
-    const pendingPriIdx = this.items.findIndex(
-      (it, i) => it.is_priority && (excludeIdx === null || i !== excludeIdx)
-    );
+    let pendingPriIdx = this.items.findIndex((it, i) => it.is_priority && i !== excludeIdx);
+    if (pendingPriIdx === -1 && excludeIdx !== null && this.items[excludeIdx]?.is_priority) {
+      pendingPriIdx = excludeIdx;
+    }
     if (pendingPriIdx !== -1) {
-      this.items[pendingPriIdx].priority_countdown = 0;
+      if (pendingPriIdx !== excludeIdx) {
+        this.items[pendingPriIdx].priority_countdown = 0;
+      }
       this.currentKind = 'priority';
       this.currentDueNextCursor = null;
       this.setCard(pendingPriIdx, true);
@@ -578,7 +587,6 @@ export class App {
     }
 
     this.commitDueCursorIfNeeded();
-    this.recordReviewAction();
     this.advanceToNext(true);
     this.persistReview(before);
   }
@@ -593,9 +601,10 @@ export class App {
     item.priority_countdown = getRandomPriorityCountdown(3, 10);
 
     this.commitDueCursorIfNeeded();
-    this.recordReviewAction();
-    this.showToast(`Слово появится через 3–10 других карточек`);
     this.advanceToNext(true);
+    this.showToast(this.currentIdx === cur
+      ? 'Других карточек сейчас нет. Можно повторить эту ещё раз.'
+      : 'Слово появится через 3–10 других карточек');
     this.persistReview(before);
   }
 
@@ -634,7 +643,6 @@ export class App {
     const stats = getStats(this.items);
     this.statDue.textContent = stats.due;
     this.statPriority.textContent = stats.priority;
-    this.statLearning.textContent = stats.learning;
     this.statTotal.textContent = stats.total;
   }
 
@@ -650,7 +658,7 @@ export class App {
       if (query && !termMatch && !rusMatch) return false;
 
       if (filter === 'due') {
-        return !it.is_priority && it.next_repeat && new Date(it.next_repeat) <= now;
+        return isDueForReview(it, now.getTime());
       }
       if (filter === 'priority') {
         return it.is_priority;
