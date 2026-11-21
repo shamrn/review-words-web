@@ -1,5 +1,5 @@
 const PREFIX = `word-review:${new URL(self.registration.scope).pathname}`;
-const CACHE_NAME = `${PREFIX}:v4`;
+const CACHE_NAME = `${PREFIX}:v5`;
 const ASSETS = [
   './', './index.html', './styles.css', './js/config.js', './js/data.js',
   './js/srs.js', './js/tts.js', './js/storage.js', './js/app.js',

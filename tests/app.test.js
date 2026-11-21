@@ -19,6 +19,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
 test('HTML wiring initializes without a shared hardcoded PIN', () => {
   assert.equal(document.getElementById('lockOverlay'), null);
   assert.equal(document.getElementById('statTotal').textContent, '0');
+  assert.equal(document.getElementById('statLearning').hidden, true);
   assert.equal(document.querySelector('label[for="sbKey"]').textContent, 'Publishable key');
   assert.equal(document.getElementById('importFileInput').multiple, true);
 });
